@@ -56,7 +56,12 @@ yarn install
 
 ```
 PORT=3000
+WEBADMIN_GRAPHQL_ADMIN_SECRET=
+WEBADMIN_GRAPHQL_ENDPOINT=
+PG_CONNECTION_STRING=
 ```
+Note: If Hasura is deployed in Render variable `PG_CONNECTION_STRING` value should be External Database URL
+
 
 ### Compiles and hot-reloads for development
 From the repo folder, do the following
