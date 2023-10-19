@@ -11,15 +11,16 @@ import {  sessionVariableFormat } from "./interface";
   }
   
   export async function addWordDescriptions (inputVariable: (string | number)[][], session: sessionVariableFormat): Promise<any>{
-    const batchSize = 1000;
+    const batchSize = 5000;
     const batches = []
     let affected_rows = 0;
+    const client = await creatPoolClient().connect()
     //split values into batches
     for(let i = 0 ; i < inputVariable.length; i+= batchSize) {
       batches.push(inputVariable.slice(i, i + batchSize))
     }
     //execute all batches at a time
-    const promises = batches.map((batch) => batchProcessor(batch));
+    const promises = batches.map((batch) => batchProcessor(batch, client));
     try {
       const data = await Promise.all(promises);
       console.log("All queries executed successfully.", );
@@ -29,19 +30,22 @@ import {  sessionVariableFormat } from "./interface";
       return affected_rows
     } catch (error) {
       console.log("error : ", error)
-    }   
+    } finally {
+      client.release()
+    }
   };
 
-  function batchProcessor(batch:(string | number)[][]) {
+  async function batchProcessor(batch:(string | number)[][], client:any) {
 
     // Remove Null values and setup dynamic placeholder
-    // for instances: valuePlaceholder would be ($1,$2,$3,$4,$5,$6,.......)
+    // thus valuePlaceholder would be like this ($1,$2,$3,$4,$5,$6,.......)
     const valuePlacehoder = batch
-      .filter(item => item[0] != null)
+      .filter(item => item[0] != null && item[2] !== null)
       .map((_, i) => `($${i * 6 + 1}, $${i * 6 + 2}, $${i * 6 + 3}, $${i * 6 + 4}, $${i * 6 + 5}, $${i * 6 + 6})`)
       .join(", ");
       
-      const values = batch.flat();
+      const values = batch.filter(item => item[0] !== null && item[2] !== null).flat();
+
       const query = `
         WITH input(word, source, description, dictionary_id, last_updated_by, target) AS (
           VALUES ${valuePlacehoder}
@@ -61,8 +65,8 @@ import {  sessionVariableFormat } from "./interface";
         RETURNING word_id, description;
       `
       try {
-      return creatPoolClient().query(query, values);
+      return client.query(query, values);
       } catch (error: any) {
         return error;
-      }
+      } 
   }
